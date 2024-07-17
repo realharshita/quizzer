@@ -1,7 +1,8 @@
 import tkinter as tk
 from tkinter import messagebox
 import random
-import winsound
+import json
+import os
 
 class QuizBot:
     def __init__(self, root):
@@ -23,6 +24,9 @@ class QuizBot:
         self.current_question = 0
         self.score = 0
         self.time_left = 10
+        self.username = ""
+
+        self.high_scores = self.load_high_scores()
 
         self.welcome_screen()
 
@@ -31,13 +35,21 @@ class QuizBot:
         welcome_label = tk.Label(self.root, text="Welcome to the Quiz Bot!", font=("Helvetica", 18))
         welcome_label.pack(pady=20)
 
-        instructions_label = tk.Label(self.root, text="Answer the questions within the time limit. Click Start to begin.", font=("Helvetica", 12))
+        instructions_label = tk.Label(self.root, text="Enter your name and click Start to begin.", font=("Helvetica", 12))
         instructions_label.pack(pady=10)
+
+        self.name_entry = tk.Entry(self.root, font=("Helvetica", 12))
+        self.name_entry.pack(pady=10)
 
         start_button = tk.Button(self.root, text="Start", font=("Helvetica", 12), command=self.start_quiz)
         start_button.pack(pady=20)
 
     def start_quiz(self):
+        self.username = self.name_entry.get()
+        if not self.username:
+            messagebox.showwarning("Input Error", "Please enter your name.")
+            return
+
         self.clear_screen()
         self.question_label = tk.Label(self.root, text="", font=("Helvetica", 14))
         self.question_label.pack(pady=20)
@@ -75,12 +87,9 @@ class QuizBot:
     def check_answer(self, index):
         question_data = self.questions[self.current_question]
         if index == -1 or question_data["options"][index] != question_data["answer"]:
-            correct_index = question_data["options"].index(question_data["answer"])
-            winsound.PlaySound("SystemExclamation", winsound.SND_ALIAS)
             messagebox.showinfo("Incorrect", f"Correct answer: {question_data['answer']}")
         else:
             self.score += 1
-            winsound.PlaySound("SystemAsterisk", winsound.SND_ALIAS)
         self.current_question += 1
         self.load_question()
 
@@ -100,9 +109,18 @@ class QuizBot:
         score_label = tk.Label(self.root, text=f"Your score is {self.score} out of {len(self.questions)}", font=("Helvetica", 14))
         score_label.pack(pady=10)
 
+        self.update_high_scores()
+
         for i, question_data in enumerate(self.questions):
             result_label = tk.Label(self.root, text=f"Q{i+1}: {question_data['question']}\nCorrect answer: {question_data['answer']}", font=("Helvetica", 12))
             result_label.pack(pady=5)
+
+        high_scores_label = tk.Label(self.root, text="High Scores:", font=("Helvetica", 14))
+        high_scores_label.pack(pady=10)
+
+        for score_entry in self.high_scores:
+            high_score_label = tk.Label(self.root, text=f"{score_entry['name']}: {score_entry['score']}", font=("Helvetica", 12))
+            high_score_label.pack()
 
         restart_button = tk.Button(self.root, text="Restart", font=("Helvetica", 12), command=self.restart_quiz)
         restart_button.pack(pady=20)
@@ -118,6 +136,21 @@ class QuizBot:
         self.current_question = 0
         self.score = 0
         self.start_quiz()
+
+    def load_high_scores(self):
+        if os.path.exists("high_scores.json"):
+            with open("high_scores.json", "r") as file:
+                return json.load(file)
+        return []
+
+    def save_high_scores(self):
+        with open("high_scores.json", "w") as file:
+            json.dump(self.high_scores, file)
+
+    def update_high_scores(self):
+        self.high_scores.append({"name": self.username, "score": self.score})
+        self.high_scores = sorted(self.high_scores, key=lambda x: x["score"], reverse=True)[:5]
+        self.save_high_scores()
 
 root = tk.Tk()
 quiz_bot = QuizBot(root)
